@@ -1,9 +1,14 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { ToDo } from '../../interfaces/to-do';
+import { SortTodo } from '../../interfaces/sort-to-do';
+import { sortTodosByTimestamp } from '../utils/sort-todos-by-timestamp';
+import { sortTodosByDone } from '../utils/sort-todos-by-done';
+import { sortTodosByTitle } from '../utils/sort-todos-by-title';
 
 export const useTodo = () => {
   const [todos, setTodos] = useState<ToDo[]>([]);
+  const sortTodosRef = useRef<SortTodo | null>(null);
 
   const addTodo = useCallback((todo: Omit<ToDo, 'id'>) => {
     const newTodo: ToDo = {
@@ -14,7 +19,15 @@ export const useTodo = () => {
       timestamp: new Date().getTime(),
     };
 
-    setTodos((prev) => [...prev, newTodo]);
+    setTodos((prev) => {
+      const newTodos = [...prev, newTodo];
+
+      if (sortTodosRef.current === 'title') {
+        return sortTodosByTitle(newTodos);
+      }
+
+      return newTodos;
+    });
   }, []);
 
   const updateTodo = useCallback(
@@ -37,38 +50,42 @@ export const useTodo = () => {
     []
   );
 
-  const toggleTodoState = useCallback(
-    (id: string) =>
-      setTodos((prev) =>
-        prev.map((todo) =>
-          todo.id === id ? { ...todo, done: !todo.done } : todo
-        )
-      ),
-    []
-  );
+  const toggleTodoState = useCallback((id: string) => {
+    setTodos((todos) => {
+      const newTodos = structuredClone(todos).map((todo) =>
+        todo.id === id ? { ...todo, done: !todo.done } : todo
+      );
+
+      if (sortTodosRef.current === 'done') {
+        return sortTodosByDone(newTodos);
+      }
+
+      return newTodos;
+    });
+  }, []);
 
   const removeTodo = useCallback(
     (id: string) => setTodos((prev) => prev.filter((todo) => todo.id !== id)),
     []
   );
 
-  const sortTodosBy = useCallback((value?: 'title' | 'done') => {
+  const sortTodosBy = useCallback((value?: SortTodo) => {
     setTodos((todos) => {
-      const newTodos = structuredClone(todos);
-
-      if (!value) {
-        newTodos.sort((todoA, todoB) => todoA.timestamp - todoB.timestamp);
-      }
-
       if (value === 'done') {
-        newTodos.sort((todoA, todoB) => +todoB.done - +todoA.done);
+        sortTodosRef.current = 'done';
+
+        return sortTodosByDone(todos);
       }
 
       if (value === 'title') {
-        newTodos.sort((todoA, todoB) => todoA.title.localeCompare(todoB.title));
+        sortTodosRef.current = 'title';
+
+        return sortTodosByTitle(todos);
       }
 
-      return newTodos;
+      sortTodosRef.current = null;
+
+      return sortTodosByTimestamp(todos);
     });
   }, []);
 
