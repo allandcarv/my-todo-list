@@ -44,6 +44,10 @@ export const useTodo = () => {
           return todo;
         });
 
+        if (sortTodosRef.current === 'title') {
+          return sortTodosByTitle(newTodos);
+        }
+
         return newTodos;
       });
     },
